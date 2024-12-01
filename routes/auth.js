@@ -3,6 +3,7 @@ const authController = require("../controllers/authcontroller");
 
 const router = express.Router();
 
+//add ratelimit on signup
 router.post("/signup", authController.signup);
 router.get("/verify-email", authController.verifyEmail);
 router.post("/login", authController.login);

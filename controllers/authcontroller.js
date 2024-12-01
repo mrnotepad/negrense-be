@@ -2,6 +2,7 @@ const bcrypt = require("bcrypt");
 const db = require("../models/db");
 const { generateToken, verifyToken } = require("../utils/tokenUtils");
 const sendEmail = require("../utils/emailService");
+const crypto = require("crypto");
 
 exports.signup = async (req, res) => {
   const { name, email, password } = req.body;
@@ -9,10 +10,12 @@ exports.signup = async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = generateToken({ email }, "1d");
+    // Generate a unique user ID
+    const userID = crypto.randomBytes(8).toString("hex"); // Generates a 16-character hexadecimal ID
 
     const [result] = await db.query(
-      "INSERT INTO users (name, email, password, verification_token) VALUES (?, ?, ?, ?)",
-      [name, email, hashedPassword, verificationToken]
+      "INSERT INTO users (id, name, email, password, verification_token) VALUES (?, ?, ?, ?, ?)",
+      [userID, name, email, hashedPassword, verificationToken]
     );
 
     await sendEmail(
@@ -40,7 +43,8 @@ exports.verifyEmail = async (req, res) => {
       [email]
     );
 
-    res.status(200).json({ message: "Email verified successfully." });
+    // Redirect the user to a confirmation page or login page after verification
+    res.redirect(process.env.FRONT_END_URL + "/login");
   } catch (error) {
     res.status(400).json({ error: "Invalid or expired token." });
   }
@@ -89,7 +93,7 @@ exports.resetPassword = async (req, res) => {
     await sendEmail(
       email,
       "Reset Your Password",
-      `<a href="${process.env.BASE_URL}/auth/reset-password?token=${resetToken}">Reset Password</a>`
+      `<a href="${process.env.FRONT_END_URL}/newpassword/reset-password?token=${resetToken}">Reset Password</a>`
     );
 
     res.status(200).json({ message: "Password reset email sent." });
@@ -99,8 +103,11 @@ exports.resetPassword = async (req, res) => {
 };
 
 exports.updatePassword = async (req, res) => {
-  const { token } = req.query;
+  const { token } = req.body;
   const { newPassword } = req.body;
+
+  console.log("token");
+  console.log(token);
 
   try {
     const { email } = verifyToken(token);

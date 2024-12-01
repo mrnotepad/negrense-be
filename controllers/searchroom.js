@@ -6,7 +6,8 @@ exports.getAvailableRooms = async (req, res) => {
     const start_date = req.params.start_date;
     const end_date = req.params.end_date;
 
-    const query = `
+    // Check if category_id is 'all' and adjust the query accordingly
+    let query = `
       SELECT 
           r.id, 
           r.room_number, 
@@ -15,6 +16,7 @@ exports.getAvailableRooms = async (req, res) => {
           r.price_per_night, 
           r.bed_type, 
           r.note,
+          c.id AS cat_id,
           c.name AS category_name, 
           c.description AS category_description, 
           c.image_url AS category_image
@@ -28,17 +30,18 @@ exports.getAvailableRooms = async (req, res) => {
               (b.check_out_date = ? AND TIME(b.check_out_date) > '12:00:00')
           )
       WHERE 
-          r.category_id = ? AND
           r.availability = 1 AND
-          b.id IS NULL;
+          b.id IS NULL
     `;
 
-    const [results] = await db.query(query, [
-      end_date, // Ensure no future bookings overlap with the search range
-      start_date, // Check overlap with the search's start date
-      start_date, // Exact match on check-out date for same-day cases
-      category_id, // Filter by room category
-    ]);
+    const queryParams = [end_date, start_date, start_date];
+
+    if (category_id !== "all") {
+      query += ` AND r.category_id = ?`;
+      queryParams.push(category_id);
+    }
+
+    const [results] = await db.query(query, queryParams);
 
     res.status(200).json({ availableRooms: results });
   } catch (error) {
