@@ -71,7 +71,11 @@ exports.login = async (req, res) => {
     if (!isPasswordValid)
       return res.status(401).json({ error: "Invalid password." });
 
-    const token = generateToken({ id: user.id, isAdmin: user.is_admin });
+    const token = generateToken({
+      id: user.id,
+      isAdmin: user.is_admin,
+      email: user.email,
+    });
 
     res.status(200).json({ message: "Login successful.", token });
   } catch (error) {

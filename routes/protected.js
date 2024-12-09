@@ -10,6 +10,11 @@ const { assignRoom } = require("../controllers/assignroom");
 const { getAvailableRooms } = require("../controllers/searchroom");
 const { getCategoriesOnly } = require("../controllers/getcategories-only");
 const { getUserData } = require("../controllers/check-user-data");
+const { updateProfile } = require("../controllers/update-profile");
+const { finalCheck } = require("../controllers/finalcheck");
+const { getReservations } = require("../controllers/getreservations");
+const { cancelbooking } = require("../controllers/cancelbooking");
+const { getPending } = require("../controllers/checkpendingbooking");
 
 router.get("/dashboard", authenticateToken, (req, res) => {
   res.json({
@@ -228,9 +233,15 @@ router.get("/getuser", authenticateToken, async (req, res) => {
   try {
     if (req.user) {
       // Assuming `req.user` contains the user's ID from the token
+
+      console.log(req.user.id);
+
+      //getUserData(req.user.id, res); // Delegate to the controllerc function
+
       return res.status(200).json({
         id: req.user.id, // Return the user ID
-        message: "User data fetched successfully.",
+        email: req.user.email,
+        message: getUserData,
       });
     }
 
@@ -244,11 +255,114 @@ router.get("/getuser", authenticateToken, async (req, res) => {
   }
 });
 
-router.get("/getUser/:id?", authenticateToken, async (req, res) => {
+router.get("/getuser/:id?", authenticateToken, async (req, res) => {
   try {
     if (req.user) {
       //console.log("User is Admin:", req.user.isAdmin);
       return getUserData(req, res); // Delegate to the controllerc function
+    }
+
+    // Non-admin response
+    res.status(403).json({
+      message: "Access denied.",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+//update profile
+router.post("/profile/update", authenticateToken, async (req, res) => {
+  try {
+    console.log("Incoming Request:", req.method, req.url); // Debug log console.log("Request Params:", req.params); // Debug log console.log("Decoded User:", req.user);
+    // Check if the user is an admin
+    if (req.user) {
+      //console.log("User is Admin:", req.user.isAdmin);
+      return updateProfile(req, res); // Delegate to the controllerc function
+    }
+
+    // Non-admin response
+    res.status(403).json({
+      message: "Access denied. Admin privileges required.",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+//finalcheck
+router.get(
+  "/finalcheck/:category_id/:start_date/:end_date/:guest_id/:price/:roomId/:guestName/:guestPhone/:address/:userEmail",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      console.log("Incoming Request:", req.method, req.url); // Debug log console.log("Request Params:", req.params); // Debug log console.log("Decoded User:", req.user);
+      // Check if the user is an admin
+      if (req.user) {
+        //console.log("User is Admin:", req.user.isAdmin);
+        return finalCheck(req, res); // Delegate to the controllerc function
+      }
+
+      // Non-admin response
+      res.status(403).json({
+        message: "Access denied. Admin privileges required.",
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+);
+
+//get reservations
+router.get("/user-reservations", authenticateToken, async (req, res) => {
+  try {
+    if (req.user) {
+      //console.log("User is Admin:", req.user.isAdmin);
+      return getReservations(req, res); // Delegate to the controllerc function
+    }
+
+    // Non-admin response
+    res.status(403).json({
+      message: "Access denied.",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+//cancell booking
+router.post("/booking/cancel", authenticateToken, async (req, res) => {
+  try {
+    console.log("Incoming Request:", req.method, req.url); // Debug log
+    console.log("Request Body:", req.body); // Debug log
+    console.log("Decoded User:", req.user); // Debug log
+
+    // Check if the user has a valid token
+    if (req.user) {
+      console.log("User is authenticated:", req.user.id);
+      return cancelbooking(req, res); // Delegate to the controller function
+    }
+
+    // Unauthorized response
+    res.status(401).json({
+      message: "Authentication required.",
+    });
+  } catch (error) {
+    console.error("Error handling cancel booking request:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+//get pending
+router.get("/get-pending", authenticateToken, async (req, res) => {
+  try {
+    if (req.user) {
+      //console.log("User is Admin:", req.user.isAdmin);
+      return getPending(req, res); // Delegate to the controllerc function
     }
 
     // Non-admin response

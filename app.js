@@ -4,6 +4,7 @@ const dotenv = require("dotenv");
 const authRoutes = require("./routes/auth");
 const protectedRoutes = require("./routes/protected");
 const cors = require("cors");
+const publicRoutes = require("./routes/public"); // Adjust the path if needed
 
 dotenv.config();
 
@@ -23,6 +24,9 @@ app.use(bodyParser.json());
 app.use("/auth", authRoutes);
 // Protected routes
 app.use("/protected", protectedRoutes);
+
+// Use the routes defined in public.js
+app.use("/public", publicRoutes);
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);
