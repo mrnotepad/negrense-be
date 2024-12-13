@@ -15,6 +15,9 @@ const { finalCheck } = require("../controllers/finalcheck");
 const { getReservations } = require("../controllers/getreservations");
 const { cancelbooking } = require("../controllers/cancelbooking");
 const { getPending } = require("../controllers/checkpendingbooking");
+const { todayData } = require("../controllers/todaydata");
+const { getCalendarData } = require("../controllers/calendardata");
+const { updateBooking } = require("../controllers/updatebooking");
 
 router.get("/dashboard", authenticateToken, (req, res) => {
   res.json({
@@ -363,6 +366,59 @@ router.get("/get-pending", authenticateToken, async (req, res) => {
     if (req.user) {
       //console.log("User is Admin:", req.user.isAdmin);
       return getPending(req, res); // Delegate to the controllerc function
+    }
+
+    // Non-admin response
+    res.status(403).json({
+      message: "Access denied.",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+//get info for today
+router.get("/today-data", authenticateToken, async (req, res) => {
+  try {
+    if (req.user) {
+      //console.log("User is Admin:", req.user.isAdmin);
+      return todayData(req, res); // Delegate to the controllerc function
+    }
+
+    // Non-admin response
+    res.status(403).json({
+      message: "Access denied.",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.get("/calendar-data", authenticateToken, async (req, res) => {
+  try {
+    if (req.user) {
+      //console.log("User is Admin:", req.user.isAdmin);
+      return getCalendarData(req, res); // Delegate to the controllerc function
+    }
+
+    // Non-admin response
+    res.status(403).json({
+      message: "Access denied.",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+//update booking
+router.post("/update-booking", authenticateToken, async (req, res) => {
+  try {
+    if (req.user) {
+      //console.log("User is Admin:", req.user.isAdmin);
+      return updateBooking(req, res); // Delegate to the controllerc function
     }
 
     // Non-admin response

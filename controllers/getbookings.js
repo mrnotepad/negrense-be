@@ -2,77 +2,98 @@ const db = require("../models/db");
 
 exports.getBookings = async (req, res) => {
   try {
-    // Get pagination and search query from the request
+    // Get pagination, search query, and date range from the request
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
-    const searchQuery = req.query.search || "";
+    const searchQuery = (req.query.search || "").trim(); // Trim spaces before and after the search query
+    const startDate = req.query.start_date || null; // Start date for filtering
+    const endDate = req.query.end_date || null; // End date for filtering
 
-    // SQL query with search filter, JOIN to include guest and category information, and sorting by created_at (latest first)
-    const [rows] = await db.query(
-      `SELECT 
-         bookings.id AS booking_id,  -- Alias to avoid conflict
-         bookings.room_id,
-         bookings.paynamics_req_id,
-         bookings.category_id,
-         bookings.guest_id,
-         bookings.status,
-         bookings.check_in_date,
-         bookings.check_out_date,
-         bookings.total_price,
-         bookings.created_at,
-         bookings.updated_at,
-         guests.full_name,
-         guests.email,
-         guests.phone_number,
-         categories.name AS category_name,
-         categories.description AS category_description,
-         categories.image_url AS category_image_url,
-         rooms.id AS room_id,        -- Alias to avoid conflict
-         rooms.room_number
-       FROM bookings
-       LEFT JOIN guests ON bookings.guest_id = guests.id
-       LEFT JOIN categories ON bookings.category_id = categories.id
-       LEFT JOIN rooms ON bookings.room_id = rooms.id
-       WHERE 
-         bookings.paynamics_req_id LIKE ? OR 
+    // Base SQL query
+    let sql = `
+      SELECT 
+        bookings.id AS booking_id,
+        bookings.room_id,
+        bookings.paynamics_req_id,
+        bookings.active_checkin,
+        bookings.category_id,
+        bookings.guest_id,
+        bookings.status,
+        bookings.check_in_date,
+        bookings.check_out_date,
+        bookings.total_price,
+        bookings.created_at,
+        bookings.updated_at,
+        guests.full_name,
+        guests.email,
+        guests.phone_number,
+        categories.name AS category_name,
+        categories.description AS category_description,
+        categories.image_url AS category_image_url,
+        rooms.id AS room_id,
+        rooms.room_number
+      FROM bookings
+      LEFT JOIN guests ON bookings.guest_id = guests.user_id
+      LEFT JOIN categories ON bookings.category_id = categories.id
+      LEFT JOIN rooms ON bookings.room_id = rooms.id
+      WHERE 
+        (bookings.paynamics_req_id LIKE ? OR 
          bookings.status LIKE ? OR 
          guests.full_name LIKE ? OR
          guests.email LIKE ? OR 
-         categories.name LIKE ?
-       ORDER BY bookings.created_at DESC  -- Sorting by created_at (latest first)
-       LIMIT ? OFFSET ?`,
-      [
-        `%${searchQuery}%`,
-        `%${searchQuery}%`,
-        `%${searchQuery}%`,
-        `%${searchQuery}%`,
-        `%${searchQuery}%`,
-        limit,
-        offset,
-      ]
-    );
+         categories.name LIKE ?)
+    `;
+
+    // Add date range filters for check-in and check-out dates if provided
+    const queryParams = [
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+    ];
+
+    if (startDate && endDate) {
+      sql += ` AND bookings.check_in_date >= ? AND bookings.check_out_date <= ?`;
+      queryParams.push(startDate, endDate);
+    }
+
+    // Add sorting by created_at (descending), limit, and offset
+    sql += ` ORDER BY bookings.created_at DESC LIMIT ? OFFSET ?`;
+    queryParams.push(limit, offset);
+
+    // Execute the query to fetch bookings
+    const [rows] = await db.query(sql, queryParams);
 
     // Get the total count of bookings for pagination info
-    const [[{ total }]] = await db.query(
-      `SELECT COUNT(*) AS total 
-       FROM bookings
-       LEFT JOIN guests ON bookings.guest_id = guests.id
-       LEFT JOIN categories ON bookings.category_id = categories.id
-       WHERE 
-         bookings.paynamics_req_id LIKE ? OR 
+    let countSql = `
+      SELECT COUNT(*) AS total 
+      FROM bookings
+      LEFT JOIN guests ON bookings.guest_id = guests.id
+      LEFT JOIN categories ON bookings.category_id = categories.id
+      WHERE 
+        (bookings.paynamics_req_id LIKE ? OR 
          bookings.status LIKE ? OR 
          guests.full_name LIKE ? OR
          guests.email LIKE ? OR 
-         categories.name LIKE ?`,
-      [
-        `%${searchQuery}%`,
-        `%${searchQuery}%`,
-        `%${searchQuery}%`,
-        `%${searchQuery}%`,
-        `%${searchQuery}%`,
-      ]
-    );
+         categories.name LIKE ?)
+    `;
+
+    const countParams = [
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+    ];
+
+    if (startDate && endDate) {
+      countSql += ` AND bookings.check_in_date >= ? AND bookings.check_out_date <= ?`;
+      countParams.push(startDate, endDate);
+    }
+
+    const [[{ total }]] = await db.query(countSql, countParams);
 
     // Return response with bookings and pagination info
     return res.json({
